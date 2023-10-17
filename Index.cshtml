@@ -1,0 +1,154 @@
+@using BIViewerAppService.Model
+@using System.Text.RegularExpressions
+@model BIViewerWebModule.ReportsModel
+@{
+    ViewBag.Title = "ams.bi Viewer";
+    ViewBag.BrandTitle = "ams.bi Viewer";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    BIViewerWebModule.Controllers.AdministrationController administrationController = new BIViewerWebModule.Controllers.AdministrationController();
+    var countClients = administrationController.GetClients().Content.Count;
+   
+
+}
+
+@section scripts{
+    @Scripts.Render("~/Scripts/Favorite/Index.js")
+}
+
+@section Styles {
+    <link href="@Url.Content("~/Content/Home/Reports.css")" rel="stylesheet" type="text/css" />
+}
+
+@section menubuttons {
+
+    <li>
+        <a id="favorit" class="btn" @*href="@Url.Action("Index", "Home")"*@><span class="glyphicon glyphicon-list-alt"></span> @i18n.Favorites</a>
+    </li>
+}
+
+<table id="tablemargin" class="table table-hover table-condensed">
+    <thead>
+        <tr>
+            <th>@i18n.Name</th>
+            <th>@i18n.Report</th>
+            <th>@i18n.Client</th>
+            <th>@i18n.YearMonth</th>
+            <th>@i18n.StartYearMonth</th>
+            <th>@i18n.EndYearMonth</th>
+            <th>@i18n.BusinessArea</th>
+
+        </tr>
+    </thead>
+
+    <tbody>
+
+        @foreach (Favorite favorite in Model.Favorites)
+        {
+            // Parameter Report
+            string favoriteName = favorite.ReportPath;
+            int lastIndex = favoriteName.LastIndexOf('/');
+            string resultName = favoriteName.Substring(lastIndex + 1);
+            favorite.ReportName = resultName;
+
+            foreach (BIParameterValue values in favorite.ParameterValues)
+            {
+                if (values.Name == "Time" || values.Name == "TimeStart" || values.Name == "parTimeStart" || values.Name == "TimeEnd" || values.Name == "parTimeEnd" || values.Name == "Client" || values.Name == "parClient"||values.Name == "BusinessArea")
+                {
+                    string pattern = @"\[([^]]*)\]";
+
+                    MatchCollection matches = Regex.Matches(values.Value, pattern);
+
+                    string lastMatch = matches[matches.Count - 1].Groups[1].Value;
+
+                    if (!string.IsNullOrEmpty(lastMatch))
+                    {
+                        var result = lastMatch;
+
+                        // Parameter Year/Month
+                        if (values.Name == "Time")
+                        {
+                            favorite.YearMonth = result.Insert(4, "-");
+                        }
+                        // Parameter Start-Year/Month
+                        else if (values.Name == "TimeStart"|| values.Name == "parTimeStart")
+                        {
+                            favorite.StartYearMonth = result.Insert(4, "-");
+                        }
+                        // Parameter End-Year/Month
+                        else if (values.Name == "TimeEnd" || values.Name == "parTimeEnd")
+                        {
+                            favorite.EndYearMonth = result.Insert(4, "-");
+                        }
+
+                        // Parameter Client
+                        else if (values.Name == "Client" || values.Name == "parClient")
+                        {
+                            if (string.IsNullOrEmpty(favorite.Client))
+                            {
+                                favorite.Client = result;
+                            }
+                            else
+                            {
+                                favorite.Client = favorite.Client + ", " + result;
+                            }
+                        }
+                        // Parameter BusinessArea
+                        else if (values.Name == "BusinessArea")
+                        {
+                            if (string.IsNullOrEmpty(favorite.BusinessArea))
+                            {
+                                favorite.BusinessArea = result;
+                            }
+                            else if (favorite.BusinessArea.Split(',').Length < 4)
+                            {
+                                favorite.BusinessArea = favorite.BusinessArea + ", " + result;
+                            }
+                        }
+
+                    }
+                }
+
+            }
+            if (!string.IsNullOrWhiteSpace(favorite.BusinessArea) && favorite.Client.Split(',').Length == countClients)
+            {
+                favorite.Client = i18n.All;
+            }
+            if (!string.IsNullOrWhiteSpace(favorite.BusinessArea) && favorite.BusinessArea.Split(',').Length > 3)
+            {
+                favorite.BusinessArea = i18n.Several;
+            }
+
+            if (string.IsNullOrEmpty(favorite.YearMonth))
+            {
+                favorite.YearMonth = "-";
+            }
+
+
+            <tr>
+                <td>@favorite.Name</td>
+                <td>@favorite.ReportName</td>
+                <td>@favorite.Client</td>
+                <td>@favorite.YearMonth</td>
+                <td>@favorite.StartYearMonth</td>
+                <td>@favorite.EndYearMonth</td>
+                <td>@favorite.BusinessArea</td>
+                <td style="text-align:right"><a href="@Url.Action("Delete", "Favorites", new { id = @favorite.ID.ToString() })" class="btn btn-danger btn-sm"><span class="glyphicon glyphicon-remove"></span></a></td>
+            </tr>
+        }
+
+    </tbody>
+
+
+</table>
+
+<script>
+
+    // If everything is ready initialize the report
+    $(document).ready(function () {
+
+
+    });
+
+</script>
+
